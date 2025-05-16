@@ -31,6 +31,8 @@ urlpatterns = [
     path("api/", include("apps.repairs.urls")),
     # отклонения (простой/аварии)
     path("api/", include("apps.deviations.urls")),
+    # Отчёты Excel
+    path("api/reports/", include("apps.reports.urls")),
 ]
 
 # ───────────── Media (DEBUG) ─────────────

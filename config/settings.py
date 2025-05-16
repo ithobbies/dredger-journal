@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "apps.repairs",
     "apps.deviations",
     "apps.refdata",
+    "apps.reports",
 ]
 
 MIDDLEWARE = [

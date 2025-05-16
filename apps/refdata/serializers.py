@@ -9,8 +9,11 @@ class DredgerTypeSerializer(serializers.ModelSerializer):
 
 
 class SparePartSerializer(serializers.ModelSerializer):
+    # URL-адрес файла приходит от DRF автоматически
+    drawing_file = serializers.FileField(required=False, allow_null=True)
+
     class Meta:
-        model = SparePart
+        model  = SparePart
         fields = "__all__"
 
 
@@ -18,3 +21,4 @@ class DredgerTypePartSerializer(serializers.ModelSerializer):
     class Meta:
         model = DredgerTypePart
         fields = "__all__"
+

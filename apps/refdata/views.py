@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from apps.core.permissions import IsEngineerOrAdmin
+from rest_framework.parsers import MultiPartParser, FormParser
 from .models import DredgerType, SparePart, DredgerTypePart
 from .serializers import (
     DredgerTypeSerializer, SparePartSerializer, DredgerTypePartSerializer,
@@ -14,6 +15,7 @@ class DredgerTypeViewSet(viewsets.ModelViewSet):
 class SparePartViewSet(viewsets.ModelViewSet):
     queryset = SparePart.objects.all()
     serializer_class = SparePartSerializer
+    parser_classes = (MultiPartParser, FormParser)
     permission_classes = [IsEngineerOrAdmin]
     filterset_fields = ("manufacturer",)
     search_fields = ("code", "name", "manufacturer")
