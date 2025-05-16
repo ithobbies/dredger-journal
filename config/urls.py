@@ -1,23 +1,38 @@
+"""
+dredger-journal · главный URL-маршрутизатор
+"""
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+
+# Simple-JWT
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView, TokenRefreshView,
+    TokenObtainPairView,
+    TokenRefreshView,
 )
-from apps.core.views import CurrentUserView   # создадим ниже
+
+# «Кто я» — отдаёт id / username / roles[]
+from apps.core.views import CurrentUserView
 
 urlpatterns = [
+    # ───────────── Django admin ─────────────
     path("admin/", admin.site.urls),
 
-    # --- auth ---
-    path("api/auth/login/",  TokenObtainPairView.as_view(), name="jwt_login"),
-    path("api/auth/refresh/", TokenRefreshView.as_view(),  name="jwt_refresh"),
-    path("api/auth/user/", CurrentUserView.as_view(),      name="current_user"),
+    # ───────────── Auth (JWT) ─────────────
+    path("api/auth/login/",   TokenObtainPairView.as_view(), name="jwt_login"),
+    path("api/auth/refresh/", TokenRefreshView.as_view(),    name="jwt_refresh"),
+    path("api/auth/user/",    CurrentUserView.as_view(),     name="current_user"),
 
-    # --- будущие API приложений ---
-    # path("api/", include("apps.repairs.urls")),
+    # ───────────── Business API ─────────────
+    # справочники (типы землесосов, запчасти, комплектность)
+    path("api/refdata/", include("apps.refdata.urls")),
+    # землесосы, агрегаты, ремонты (+ template / history actions)
+    path("api/", include("apps.repairs.urls")),
+    # отклонения (простой/аварии)
+    path("api/", include("apps.deviations.urls")),
 ]
 
+# ───────────── Media (DEBUG) ─────────────
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
