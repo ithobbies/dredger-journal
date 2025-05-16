@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { Navigate } from "react-router-dom";
 
 /**
  * Страница авторизации:
@@ -8,7 +9,9 @@ import { useAuth } from "../auth/AuthContext";
  *  – спиннер во время запроса
  */
 export default function Login() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
+
+  if (user) return <Navigate to="/repairs" replace />;
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
