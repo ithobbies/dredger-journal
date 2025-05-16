@@ -7,6 +7,8 @@ import DeviationsList from "./pages/DeviationsList";
 import RepairForm from "./pages/RepairForm";
 import AppLayout from "./components/AppLayout";
 import DeviationForm from "./pages/DeviationForm";
+import SparePartsList from "./pages/SparePartsList";
+import SparePartForm from "./pages/SparePartForm";
 
 
 export default function App() {
@@ -23,6 +25,9 @@ export default function App() {
               <Route path="/repairs/new" element={<RepairForm />} />
               <Route path="/deviations" element={<DeviationsList />} />
               <Route path="/deviations/new" element={<DeviationForm />} />
+              <Route path="/spare-parts" element={<SparePartsList />} />
+              <Route path="/spare-parts/new" element={<SparePartForm />} />
+              <Route path="/spare-parts/:id/edit" element={<SparePartForm />} />
             </Route>
           </Route>
         </Routes>

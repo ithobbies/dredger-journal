@@ -32,7 +32,7 @@ export default function DeviationForm() {
   const [elec, setElec]             = useState("");
 
   useEffect(() => {
-    api.get("/dredgers/").then(r => setDredgers(r.data));
+    api.get("/dredgers/").then(r => setDredgers(r.data.results ?? r.data));
   }, []);
 
   /** submit */

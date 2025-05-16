@@ -21,6 +21,9 @@ export default function Navbar() {
         <Link className="hover:text-blue-300" to="/deviations/new">
           + Новое отклонение
         </Link>
+        <Link className="hover:text-blue-300" to="/spare-parts">
+          Запчасти
+        </Link>
       </nav>
 
       <button

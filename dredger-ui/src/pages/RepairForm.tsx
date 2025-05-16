@@ -23,7 +23,7 @@ export default function RepairForm() {
 
   // загрузка землесосов
   useEffect(() => {
-    api.get("/dredgers/").then((r) => setDredgers(r.data));
+    api.get("/dredgers/").then((res) => setDredgers(res.data.results ?? res.data));
   }, []);
 
   // загрузка шаблона при выборе землесоса
