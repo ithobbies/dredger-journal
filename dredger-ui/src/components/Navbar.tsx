@@ -24,6 +24,9 @@ export default function Navbar() {
         <Link className="hover:text-blue-300" to="/spare-parts">
           Запчасти
         </Link>
+        <Link to="/dashboard" className="hover:text-blue-300">
+          Dashboard
+        </Link>
       </nav>
 
       <button

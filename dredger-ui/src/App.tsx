@@ -9,6 +9,8 @@ import AppLayout from "./components/AppLayout";
 import DeviationForm from "./pages/DeviationForm";
 import SparePartsList from "./pages/SparePartsList";
 import SparePartForm from "./pages/SparePartForm";
+import DredgerComponents from "./pages/DredgerComponents";
+import Dashboard from "./pages/Dashboard";
 
 
 export default function App() {
@@ -28,6 +30,8 @@ export default function App() {
               <Route path="/spare-parts" element={<SparePartsList />} />
               <Route path="/spare-parts/new" element={<SparePartForm />} />
               <Route path="/spare-parts/:id/edit" element={<SparePartForm />} />
+              <Route path="/dredgers/:id/components" element={<DredgerComponents />} />
+              <Route path="/dashboard" element={<Dashboard />} />
             </Route>
           </Route>
         </Routes>

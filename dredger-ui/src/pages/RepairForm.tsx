@@ -1,46 +1,68 @@
-// src/pages/RepairForm.tsx
-import { useEffect, useState, FormEvent } from "react";
-import api from "../api/axios";
+import { useEffect, useState, FormEvent, ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
-interface Dredger { id: number; inv_number: string; }
+/* ─────────── типы ─────────── */
+interface Dredger {
+  id: number;
+  inv_number: string;
+}
 interface TemplateRow {
   part_id: number;
   part_name: string;
   norm_hours: number;
-  component_id: number | null;
   current_hours: number;
+  component_id: number | null;
 }
 
+/* ─────────── компонент ─────────── */
 export default function RepairForm() {
   const nav = useNavigate();
+
+  /* справочник землесосов */
   const [dredgers, setDredgers] = useState<Dredger[]>([]);
   const [dredgerId, setDredgerId] = useState<number | "">("");
+
+  /* шаблон агрегатов */
   const [template, setTemplate] = useState<TemplateRow[]>([]);
+
+  /* поля формы */
   const [startDate, setStart] = useState("");
   const [endDate, setEnd] = useState("");
   const [notes, setNotes] = useState("");
 
-  // загрузка землесосов
+  /* валидация часов */
+  const [hoursMap, setHoursMap] = useState<Record<number, number>>({});
+  const [errors,   setErrors]   = useState<Record<number, boolean>>({});
+
+  /* ─────── загрузка землесосов ─────── */
   useEffect(() => {
-    api.get("/dredgers/").then((res) => setDredgers(res.data.results ?? res.data));
+    api.get("/dredgers/").then(r =>
+      setDredgers(r.data.results ?? r.data)
+    );
   }, []);
 
-  // загрузка шаблона при выборе землесоса
+  /* ─────── загрузка шаблона ─────── */
   useEffect(() => {
     if (typeof dredgerId === "number")
-      api
-        .get(`/dredgers/${dredgerId}/template/`)
-        .then((r) => setTemplate(r.data));
+      api.get(`/dredgers/${dredgerId}/template/`).then(r => setTemplate(r.data));
     else setTemplate([]);
   }, [dredgerId]);
 
+  /* ─────── обработчик часов ─────── */
+  const handleHours = (row: TemplateRow) =>
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const val = Number(e.target.value);
+      setHoursMap(p => ({ ...p, [row.part_id]: val }));
+      setErrors(p => ({ ...p, [row.part_id]: val > row.norm_hours }));
+    };
+
+  /* ─────── submit ─────── */
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const items = template.map((t) => ({
-      component: t.component_id,      // если null – фронт может пропускать
-      hours: (document.getElementById(`h_${t.part_id}`) as HTMLInputElement)
-        .valueAsNumber,
+    const items = template.map(t => ({
+      component: t.component_id,
+      hours: hoursMap[t.part_id] ?? t.current_hours,
       note: "",
     }));
     await api.post("/repairs/", {
@@ -53,6 +75,9 @@ export default function RepairForm() {
     nav("/repairs");
   };
 
+  const hasErrors = Object.values(errors).some(Boolean);
+
+  /* ─────────── UI ─────────── */
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold mb-4">Новый ремонт</h1>
@@ -61,15 +86,13 @@ export default function RepairForm() {
         {/* выбор землесоса */}
         <select
           value={dredgerId}
-          onChange={(e) => setDredgerId(Number(e.target.value) || "")}
-          className="border px-3 py-2 rounded"
+          onChange={e => setDredgerId(Number(e.target.value) || "")}
+          className="border px-3 py-2 rounded w-64"
           required
         >
           <option value="">-- выбрать землесос --</option>
-          {dredgers.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.inv_number}
-            </option>
+          {dredgers.map(d => (
+            <option key={d.id} value={d.id}>{d.inv_number}</option>
           ))}
         </select>
 
@@ -78,14 +101,14 @@ export default function RepairForm() {
           <input
             type="date"
             value={startDate}
-            onChange={(e) => setStart(e.target.value)}
+            onChange={e => setStart(e.target.value)}
             className="border px-3 py-2 rounded"
             required
           />
           <input
             type="date"
             value={endDate}
-            onChange={(e) => setEnd(e.target.value)}
+            onChange={e => setEnd(e.target.value)}
             className="border px-3 py-2 rounded"
             required
           />
@@ -98,28 +121,34 @@ export default function RepairForm() {
               <tr>
                 <th className="border px-2 py-1">Агрегат</th>
                 <th className="border px-2 py-1">Текущие часы</th>
-                <th className="border px-2 py-1">Новые часы</th>
+                <th className="border px-2 py-1">Новые часы (%)</th>
               </tr>
             </thead>
             <tbody>
-              {template.map((t) => (
-                <tr key={t.part_id} className="border-t">
-                  <td className="px-2 py-1">{t.part_name}</td>
-                  <td className="px-2 py-1 text-center">
-                    {t.current_hours}
-                  </td>
-                  <td className="px-2 py-1 text-center">
-                    <input
-                      id={`h_${t.part_id}`}
-                      type="number"
-                      defaultValue={t.current_hours}
-                      className="w-24 border rounded px-1 py-0.5 text-right"
-                      min={0}
-                      required
-                    />
-                  </td>
-                </tr>
-              ))}
+              {template.map(t => {
+                const val = hoursMap[t.part_id] ?? t.current_hours;
+                const pct = Math.round((val / t.norm_hours) * 100);
+
+                return (
+                  <tr key={t.part_id} className="border-t">
+                    <td className="px-2 py-1">{t.part_name}</td>
+                    <td className="px-2 py-1 text-center">{t.current_hours}</td>
+                    <td className="px-2 py-1 text-center">
+                      <input
+                        type="number"
+                        min={0}
+                        defaultValue={t.current_hours}
+                        className={`w-24 border rounded px-1 py-0.5 text-right ${
+                          errors[t.part_id] ? "border-red-600 bg-red-50" : ""
+                        }`}
+                        onChange={handleHours(t)}
+                        required
+                      />
+                      <span className="ml-2 text-sm">{pct}%</span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -129,10 +158,10 @@ export default function RepairForm() {
           placeholder="Примечание"
           className="w-full border rounded px-3 py-2"
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={e => setNotes(e.target.value)}
         />
 
-        <button className="btn" type="submit">
+        <button className="btn" type="submit" disabled={hasErrors}>
           Сохранить
         </button>
       </form>
