@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from apps.core.permissions import (
     IsEngineerOrAdmin, ReadOnlyOrOperatorEngineer,
 )
+from apps.repairs.models import RepairItem
 from apps.refdata.models import DredgerTypePart, SparePart
 from .models import Dredger, ComponentInstance, Repair
 from .serializers import (
@@ -91,3 +92,23 @@ class RepairViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+        
+# ───────────── component history ─────────────
+class ComponentHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk: int):
+        qs = (RepairItem.objects
+              .select_related("repair__dredger")
+              .filter(component_id=pk)
+              .order_by("repair__start_date"))
+        data = [{
+            "repair_id":   ri.repair_id,
+            "dredger":     ri.repair.dredger.inv_number,
+            "start_date":  ri.repair.start_date,
+            "end_date":    ri.repair.end_date,
+            "hours":       ri.hours,
+            "note":        ri.notes,
+        } for ri in qs]
+        return Response(data)
+
