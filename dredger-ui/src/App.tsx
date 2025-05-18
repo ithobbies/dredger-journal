@@ -22,7 +22,7 @@ export default function App() {
 
           <Route element={<RequireAuth />}>
             <Route element={<AppLayout />}>
-              <Route path="/" element={<Navigate to="/repairs" />} />
+              <Route path="/" element={<Navigate to="/dashboard" />} />
               <Route path="/repairs" element={<RepairsList />} />
               <Route path="/repairs/new" element={<RepairForm />} />
               <Route path="/deviations" element={<DeviationsList />} />

@@ -1,21 +1,27 @@
 from collections import OrderedDict, Counter
-from datetime import date
+from datetime import date, timedelta
+import io
+import pandas as pd
 
-from django.http import HttpResponse
 from django.db import models
+from django.http import HttpResponse
+
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-import io, pandas as pd
-
-from apps.repairs.models import Repair, ComponentInstance
+from apps.repairs.models import (
+    Repair,
+    RepairItem,
+    ComponentInstance,
+    Dredger,
+)
 from apps.deviations.models import Deviation
 
 
-# ────────────────────── вспом. функция ──────────────────────
+# ───────────────────────── helper: dataframe → .xlsx ─────────────────────────
 def queryset_to_excel(qs, columns: OrderedDict[str, str], file_name: str) -> HttpResponse:
-    """Преобразует QuerySet в .xlsx и отдаёт как attachment"""
+    """Преобразует QuerySet в Excel-файл и возвращает как attachment."""
     df = pd.DataFrame(list(qs.values(*columns.keys())))
     df.rename(columns=columns, inplace=True)
 
@@ -31,7 +37,7 @@ def queryset_to_excel(qs, columns: OrderedDict[str, str], file_name: str) -> Htt
     return resp
 
 
-# ────────────────────── 1) Excel-экспорт ремонтов ──────────────────────
+# ───────────────────────── 1. Excel-экспорт ремонтов ─────────────────────────
 class RepairsExcelView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -48,7 +54,7 @@ class RepairsExcelView(APIView):
         return queryset_to_excel(qs, cols, "repairs.xlsx")
 
 
-# ────────────────────── 2) Excel-экспорт отклонений ──────────────────────
+# ──────────────────────── 2. Excel-экспорт отклонений ────────────────────────
 class DeviationsExcelView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -58,7 +64,7 @@ class DeviationsExcelView(APIView):
             ("id",                  "ID"),
             ("date",                "Дата"),
             ("dredger__inv_number", "Землесос"),
-            ("type",                "Вид простоя"),
+            ("type",                "Вид"),
             ("location",            "Участок"),
             ("description",         "Описание"),
             ("hours_at_deviation",  "Наработка, ч"),
@@ -66,13 +72,14 @@ class DeviationsExcelView(APIView):
         return queryset_to_excel(qs, cols, "deviations.xlsx")
 
 
-# ────────────────────── 3) Данные для Dashboard ──────────────────────
+# ───────────────────────────── 3. Dashboard data ─────────────────────────────
 class DashboardDataView(APIView):
+    """Возвращает сводку для главного дашборда."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # --- 3-A. Простои по видам ---
-        date_after  = request.GET.get("date_after", str(date.today().replace(day=1)))
+        # 3-A. распределение простоев по видам
+        date_after  = request.GET.get("date_after",  str(date.today().replace(day=1)))
         date_before = request.GET.get("date_before", str(date.today()))
         qs = Deviation.objects.filter(date__range=[date_after, date_before])
         counts = Counter(qs.values_list("type", flat=True))
@@ -82,7 +89,7 @@ class DashboardDataView(APIView):
             {"type": "technological", "count": counts.get("technological", 0)},
         ]
 
-        # --- 3-B. Топ-5 агрегатов с минимальным ресурсом ---
+        # 3-B. топ-5 самых изношенных агрегатов
         worn = (ComponentInstance.objects
                 .select_related("part", "current_dredger")
                 .exclude(part__norm_hours=0)
@@ -94,4 +101,38 @@ class DashboardDataView(APIView):
             "pct":     round(w.pct, 1),
         } for w in worn]
 
-        return Response({"downtime": downtime, "wear_top": wear_top})
+        # 3-C. остаточный ресурс по каждому землесосу
+        dredger_resources = []
+        for d in Dredger.objects.all():
+            comps = (ComponentInstance.objects
+                     .filter(current_dredger=d, part__norm_hours__gt=0)
+                     .annotate(pct=models.F("total_hours") * 100.0 / models.F("part__norm_hours")))
+            if comps:
+                min_pct = min(c.pct for c in comps)      # минимум ресурса = «узкое место»
+                dredger_resources.append({
+                    "id": d.id,
+                    "inv_number": d.inv_number,
+                    "remain_pct": round(100 - min_pct, 1),
+                })
+
+        # 3-D. землесосы в ремонте (сегодня)
+        today = date.today()
+        in_progress = (Repair.objects
+                       .filter(start_date__lte=today, end_date__gte=today)
+                       .select_related("dredger")
+                       .values("id", "dredger__inv_number", "end_date"))
+
+        # 3-E. отклонения за последние 24 ч
+        since = today - timedelta(days=1)
+        deviations_24h = (Deviation.objects
+                          .filter(date__gte=since)
+                          .select_related("dredger")
+                          .values("id", "date", "type", "dredger__inv_number", "description")[:50])
+
+        return Response({
+            "downtime":              downtime,
+            "wear_top":              wear_top,
+            "dredger_resources":     dredger_resources,
+            "repairs_in_progress":   list(in_progress),
+            "deviations_24h":        list(deviations_24h),
+        })
