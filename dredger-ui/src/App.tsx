@@ -9,6 +9,7 @@ import DredgerComponents from "./pages/DredgerComponents";
 import Login from "./pages/Login";
 import AuthProvider, { useAuth } from "./auth/AuthContext";
 
+
 export default function App() {
   return (
     <AuthProvider>

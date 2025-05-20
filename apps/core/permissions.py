@@ -25,3 +25,14 @@ class ReadOnlyOrOperatorEngineer(BasePermission):
             return _has_group(user, "Оператор") or _has_group(user, "Инженер")
         # edit/delete
         return _has_group(user, "Инженер") or _has_group(user, "Администратор")
+
+class ReadOnlyOrEngineerAdmin(BasePermission):
+    """
+    • SAFE_METHODS — все аутентифицированные
+    • Любые изменяющие запросы — только Инженер или Администратор
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        if request.method in SAFE_METHODS:
+            return user.is_authenticated
+        return _has_group(user, "Инженер") or _has_group(user, "Администратор")
