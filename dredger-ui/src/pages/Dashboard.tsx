@@ -5,30 +5,47 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer,
 } from "recharts";
 
-interface ResourceRow { id:number; inv_number:string; remain_pct:number }
-interface RepairRow   { id:number; dredger__inv_number:string; end_date:string }
-interface DevRow      { id:number; date:string; type:string; dredger__inv_number:string; description:string }
-interface Down        { type:string; count:number }
-interface Wear        { dredger:string; part:string; pct:number }
+interface ResourceRow { id: number; inv_number: string; remain_pct: number }
+interface RepairRow   { id: number; dredger__inv_number: string; end_date: string }
+interface DevRow      { id: number; date: string; type: string; dredger__inv_number: string; description: string }
+interface Down        { type: string; count: number }
+interface Wear        { dredger: string; part: string; pct: number }
 
 export default function Dashboard() {
-  const [down,setDown]=useState<Down[]>([]);
-  const [wear,setWear]=useState<Wear[]>([]);
-  const [res,setRes]=useState<ResourceRow[]>([]);
-  const [wrk,setWrk]=useState<RepairRow[]>([]);
-  const [dev,setDev]=useState<DevRow[]>([]);
+  const [down, setDown] = useState<Down[]>([]);
+  const [wear, setWear] = useState<Wear[]>([]);
+  const [res, setRes]   = useState<ResourceRow[]>([]);
+  const [wrk, setWrk]   = useState<RepairRow[]>([]);
+  const [dev, setDev]   = useState<DevRow[]>([]);
 
-  useEffect(()=>{
-    api.get("/reports/dashboard/").then(r=>{
+  useEffect(() => {
+    api.get("/reports/dashboard/").then(r => {
       setDown(r.data.downtime);
       setWear(r.data.wear_top);
       setRes(r.data.dredger_resources);
       setWrk(r.data.repairs_in_progress);
       setDev(r.data.deviations_24h);
     });
-  },[]);
+  }, []);
 
-  const COLORS=["#4ade80","#fde047","#f87171"];
+  // функция для скачивания Excel-файлов (с токеном)
+  const downloadExcel = (endpoint: string, filename: string) => {
+    api.get(endpoint, { responseType: "blob" }).then(response => {
+      const blob = new Blob([response.data], { type: response.headers["content-type"] });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }).catch(() => {
+      alert("Не удалось скачать файл. Попробуйте еще раз.");
+    });
+  };
+
+  const COLORS = ["#4ade80", "#fde047", "#f87171"];
 
   return (
     <div className="p-6 space-y-8">
@@ -40,9 +57,9 @@ export default function Dashboard() {
           <ResponsiveContainer>
             <PieChart>
               <Pie data={down} dataKey="count" outerRadius={80} label>
-                {down.map((_,i)=><Cell key={i} fill={COLORS[i]} />)}
+                {down.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
               </Pie>
-              <Legend /><Tooltip/>
+              <Legend /><Tooltip />
             </PieChart>
           </ResponsiveContainer>
           <p className="text-center mt-2 font-medium">Простои по видам</p>
@@ -51,10 +68,10 @@ export default function Dashboard() {
         <div className="h-80 w-full">
           <ResponsiveContainer>
             <BarChart layout="vertical" data={wear}>
-              <XAxis type="number" domain={[0,100]} hide />
-              <YAxis dataKey="part" type="category" tick={{fontSize:12}}/>
+              <XAxis type="number" domain={[0, 100]} hide />
+              <YAxis dataKey="part" type="category" tick={{ fontSize: 12 }} />
               <Bar dataKey="pct" fill="#60a5fa" />
-              <Tooltip/>
+              <Tooltip />
             </BarChart>
           </ResponsiveContainer>
           <p className="text-center mt-2 font-medium">Топ-5 износа, %</p>
@@ -65,12 +82,14 @@ export default function Dashboard() {
       <div>
         <h2 className="text-lg font-semibold mb-2">Остаточный ресурс землесосов</h2>
         <table className="w-full border shadow-sm">
-          <thead className="bg-gray-100"><tr>
-            <th className="border px-2 py-1">З/с</th>
-            <th className="border px-2 py-1">Остаток, %</th>
-          </tr></thead>
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border px-2 py-1">З/с</th>
+              <th className="border px-2 py-1">Остаток, %</th>
+            </tr>
+          </thead>
           <tbody>
-            {res.map(r=>(
+            {res.map(r => (
               <tr key={r.id} className="border-t">
                 <td className="px-2 py-1 text-center">{r.inv_number}</td>
                 <td className="px-2 py-1 text-center">{r.remain_pct}%</td>
@@ -90,14 +109,14 @@ export default function Dashboard() {
             <th className="border px-2 py-1">Окончание</th>
           </tr></thead>
           <tbody>
-            {wrk.map(w=>(
+            {wrk.map(w => (
               <tr key={w.id} className="border-t">
                 <td className="px-2 py-1 text-center">{w.id}</td>
                 <td className="px-2 py-1 text-center">{w.dredger__inv_number}</td>
                 <td className="px-2 py-1 text-center">{w.end_date}</td>
               </tr>
             ))}
-            {wrk.length===0 &&
+            {wrk.length === 0 &&
               <tr><td colSpan={3} className="py-3 text-center text-gray-500">Нет ремонтов</td></tr>}
           </tbody>
         </table>
@@ -114,7 +133,7 @@ export default function Dashboard() {
             <th className="border px-2 py-1">Описание</th>
           </tr></thead>
           <tbody>
-            {dev.map(d=>(
+            {dev.map(d => (
               <tr key={d.id} className="border-t">
                 <td className="px-2 py-1">{d.date}</td>
                 <td className="px-2 py-1 text-center">{d.dredger__inv_number}</td>
@@ -122,16 +141,20 @@ export default function Dashboard() {
                 <td className="px-2 py-1">{d.description}</td>
               </tr>
             ))}
-            {dev.length===0 &&
+            {dev.length === 0 &&
               <tr><td colSpan={4} className="py-3 text-center text-gray-500">За сутки отклонений нет</td></tr>}
           </tbody>
         </table>
       </div>
 
-      {/* 5. excel-кнопки */}
+      {/* 5. Кнопки выгрузки Excel */}
       <div className="flex gap-4">
-        <a href="http://localhost:8000/api/reports/repairs_excel/" className="btn">Ремонты → Excel</a>
-        <a href="http://localhost:8000/api/reports/deviations_excel/" className="btn">Отклонения → Excel</a>
+        <button onClick={() => downloadExcel("/reports/repairs_excel/", "repairs.xlsx")} className="btn">
+          Ремонты → Excel
+        </button>
+        <button onClick={() => downloadExcel("/reports/deviations_excel/", "deviations.xlsx")} className="btn">
+          Отклонения → Excel
+        </button>
       </div>
     </div>
   );

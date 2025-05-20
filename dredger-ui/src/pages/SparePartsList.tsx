@@ -1,4 +1,3 @@
-// src/pages/SparePartsList.tsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
@@ -22,8 +21,8 @@ export default function SparePartsList() {
       .then((r) => setRows(r.data.results ?? r.data));
 
   useEffect(() => {
-  load();
-}, [search]);
+    load();
+  }, [search]);
 
   return (
     <div className="p-6">
@@ -64,6 +63,7 @@ export default function SparePartsList() {
                   <a
                     href={`http://localhost:8000${p.drawing_file}`}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="text-blue-600 underline"
                   >
                     PDF

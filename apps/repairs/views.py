@@ -1,24 +1,36 @@
-from collections import Counter     
+from collections import Counter
+from django_filters.rest_framework import FilterSet, DateFilter
 from rest_framework.views import APIView
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from apps.core.permissions import (
-    IsEngineerOrAdmin, ReadOnlyOrOperatorEngineer,
+    IsEngineerOrAdmin, ReadOnlyOrOperatorEngineer, ReadOnlyOrEngineerAdmin
 )
 from apps.repairs.models import RepairItem
 from apps.refdata.models import DredgerTypePart, SparePart
 from .models import Dredger, ComponentInstance, Repair
 from .serializers import (
-    DredgerSerializer, ComponentInstanceSerializer, RepairSerializer,
+    DredgerSerializer, ComponentInstanceSerializer, ComponentInstanceWriteSerializer,
+    RepairSerializer,
 )
+
+# Фильтр для ремонта: интерпретируем start_date/end_date как границы интервала
+class RepairFilter(FilterSet):
+    start_date = DateFilter(field_name="start_date", lookup_expr="gte")
+    end_date = DateFilter(field_name="end_date", lookup_expr="lte")
+
+    class Meta:
+        model = Repair
+        fields = ["dredger", "start_date", "end_date"]
+
 
 # — Dredgers —
 class DredgerViewSet(viewsets.ModelViewSet):
     queryset = Dredger.objects.select_related("type")
     serializer_class = DredgerSerializer
-    permission_classes = [IsEngineerOrAdmin]
+    permission_classes = [ReadOnlyOrEngineerAdmin]
     search_fields = ("inv_number",)
     filterset_fields = ("type",)
     ordering_fields = ("inv_number",)
@@ -26,16 +38,16 @@ class DredgerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
     def template(self, request, pk=None):
         dredger = self.get_object()
-        parts = (
-            SparePart.objects
-            .filter(id__in=DredgerTypePart.objects
-                    .filter(dredger_type=dredger.type)
-                    .values_list("part_id", flat=True))
-            .order_by("name")
-        )
+        # Список необходимых запчастей по типу землесоса
+        parts = (SparePart.objects
+                 .filter(id__in=DredgerTypePart.objects.filter(dredger_type=dredger.type)
+                         .values_list("part_id", flat=True))
+                 .order_by("name"))
+        # Загружаем все текущие компоненты землесоса одним запросом
+        comps = {comp.part_id: comp for comp in dredger.components.all()}
         data = []
         for part in parts:
-            comp = dredger.components.filter(part=part).first()
+            comp = comps.get(part.id)
             data.append({
                 "part_id": part.id,
                 "part_name": part.name,
@@ -55,11 +67,16 @@ class DredgerViewSet(viewsets.ModelViewSet):
 # — Components —
 class ComponentInstanceViewSet(viewsets.ModelViewSet):
     queryset = ComponentInstance.objects.select_related("part", "current_dredger")
-    serializer_class = ComponentInstanceSerializer
     permission_classes = [IsEngineerOrAdmin]
     filterset_fields = ("part", "current_dredger")
     search_fields = ("serial_number", "part__name")
     ordering_fields = ("total_hours",)
+
+    def get_serializer_class(self):
+        # Используем упрощённый сериализатор для записи, и подробный с вложенным part для чтения
+        if self.action in ["create", "update", "partial_update"]:
+            return ComponentInstanceWriteSerializer
+        return ComponentInstanceSerializer
 
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
     def history(self, request, pk=None):
@@ -70,8 +87,8 @@ class ComponentInstanceViewSet(viewsets.ModelViewSet):
         history = [{
             "repair_id": i.repair_id,
             "dredger":   i.repair.dredger.inv_number,
-            "start":     i.repair.start_date,
-            "end":       i.repair.end_date,
+            "start_date": i.repair.start_date,
+            "end_date":   i.repair.end_date,
             "hours":     i.hours,
             "note":      i.note,
         } for i in qs]
@@ -85,7 +102,7 @@ class RepairViewSet(viewsets.ModelViewSet):
                 .prefetch_related("items"))
     serializer_class = RepairSerializer
     permission_classes = [ReadOnlyOrOperatorEngineer]
-    filterset_fields = ("dredger", "start_date", "end_date")
+    filterset_class = RepairFilter
     search_fields = ("notes",)
     ordering_fields = ("start_date", "-start_date")
 
@@ -94,23 +111,3 @@ class RepairViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
-        
-# ───────────── component history ─────────────
-class ComponentHistoryView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, pk: int):
-        qs = (RepairItem.objects
-              .select_related("repair__dredger")
-              .filter(component_id=pk)
-              .order_by("repair__start_date"))
-        data = [{
-            "repair_id":   ri.repair_id,
-            "dredger":     ri.repair.dredger.inv_number,
-            "start_date":  ri.repair.start_date,
-            "end_date":    ri.repair.end_date,
-            "hours":       ri.hours,
-            "note":        ri.notes,
-        } for ri in qs]
-        return Response(data)
-
