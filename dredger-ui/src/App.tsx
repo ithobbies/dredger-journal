@@ -1,33 +1,57 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
-import RepairsList from "./pages/RepairsList";
-import DeviationsList from "./pages/DeviationsList";
-import SparePartsList from "./pages/SparePartsList";
-import DredgerComponents from "./pages/DredgerComponents";
-import Login from "./pages/Login";
+/* ───────────────────────── App.tsx ─────────────────────────
+   Итоговая версия: маршрутизация, Sidebar с ролями и RequireAuth
+   Готова для копирования в проект
+──────────────────────────────────────────────────────────── */
+
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import Dashboard          from "./pages/Dashboard";
+import RepairsList        from "./pages/RepairsList";
+import RepairForm         from "./pages/RepairForm";
+import DeviationsList     from "./pages/DeviationsList";
+import DeviationForm      from "./pages/DeviationForm";
+import SparePartsList     from "./pages/SparePartsList";
+import DredgersList       from "./pages/DredgersList";
+import DredgerCard        from "./pages/DredgerCard";
+import Login              from "./pages/Login";
+
+import Sidebar            from "./components/Sidebar";
 import AuthProvider, { useAuth } from "./auth/AuthContext";
 
-
+/* ──────────────────── корневой компонент ─────────────────── */
 export default function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
+        <div className="flex h-screen overflow-hidden bg-gray-100">
           <Sidebar />
-          <main className="flex-1 overflow-y-auto p-6">
+
+          <main className="flex-1 overflow-y-auto">
             <Routes>
-              {/* public */}
+              {/* публичная страница входа */}
               <Route path="/login" element={<Login />} />
 
-              {/* protected */}
+              {/* защищённые маршруты */}
               <Route element={<RequireAuth />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/repairs/*" element={<RepairsList />} />
-                <Route path="/deviations/*" element={<DeviationsList />} />
-                <Route path="/spare-parts/*" element={<SparePartsList />} />
-                <Route path="/dredgers/:id/components" element={<DredgerComponents />} />
+                <Route path="/dashboard"   element={<Dashboard />} />
+
+                {/* Ремонты */}
+                <Route path="/repairs"        element={<RepairsList />} />
+                <Route path="/repairs/new"    element={<RepairForm  />} />
+                <Route path="/repairs/:id/edit" element={<RepairForm />} />
+
+                {/* Отклонения */}
+                <Route path="/deviations"        element={<DeviationsList />} />
+                <Route path="/deviations/new"    element={<DeviationForm  />} />
+                <Route path="/deviations/:id/edit" element={<DeviationForm />} />
+
+                {/* Запчасти */}
+                <Route path="/spare-parts" element={<SparePartsList />} />
+
+                {/* Землесосы и их карточки */}
+                <Route path="/dredgers"       element={<DredgersList />} />
+                <Route path="/dredgers/:id/*" element={<DredgerCard  />} />
+
+                {/* редирект корня */}
                 <Route path="/" element={<Navigate to="/dashboard" />} />
               </Route>
             </Routes>
@@ -38,62 +62,15 @@ export default function App() {
   );
 }
 
-/* ───────────────────── Sidebar ───────────────────── */
-function Sidebar() {
-  const { user, logout } = useAuth();
-  const [open, setOpen] = useState(true);
-  if (!user) return null;
-
-  const links = [
-    { label: "Dashboard", to: "/dashboard" },
-    { label: "Repairs",   to: "/repairs" },
-    { label: "Deviations", to: "/deviations" },
-    { label: "Spare Parts", to: "/spare-parts" },
-  ];
-
-  return (
-    <aside
-      className={`bg-white shadow-xl transition-all duration-300 flex flex-col ${
-        open ? "w-60" : "w-16"
-      }`}
-    >
-      {/* header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        {open && <span className="font-bold text-lg">Dredger</span>}
-        <button onClick={() => setOpen(!open)} className="p-1 text-lg">
-          ☰
-        </button>
-      </div>
-
-      {/* nav links */}
-      <nav className="p-2 space-y-1 flex-1">
-        {links.map((l) => (
-          <Link
-            key={l.to}
-            to={l.to}
-            className="block rounded px-3 py-2 hover:bg-blue-50"
-          >
-            {open ? l.label : l.label.charAt(0)}
-          </Link>
-        ))}
-      </nav>
-
-      {/* footer user */}
-      <div className="p-4 border-t text-sm">
-        {open && <p className="mb-2">{user.username}</p>}
-        <button onClick={logout} className="text-red-600 underline">
-          {open ? "Выйти" : "⇦"}
-        </button>
-      </div>
-    </aside>
-  );
-}
-
 /* ──────────────────── RequireAuth ─────────────────── */
 function RequireAuth() {
   const { user, loading } = useAuth();
   const location = useLocation();
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+
+  if (loading) return null; // можно показать спиннер
+
+  if (!user)
+    return <Navigate to="/login" replace state={{ from: location }} />;
+
   return <Outlet />;
 }
