@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useState } from "react";
+import type { ReactElement } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   LayoutDashboard,
@@ -13,7 +14,7 @@ import {
 interface LinkCfg {
   to: string;
   label: string;
-  icon: JSX.Element;
+  icon: ReactElement;
   role?: "Инженер" | "Администратор"; // если указано — показываем только этой роли
 }
 

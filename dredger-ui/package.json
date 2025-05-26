@@ -3,11 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "unset npm_config_prefix && source ~/.nvm/nvm.sh && nvm use 22 && vite",
+    "build": "unset npm_config_prefix && source ~/.nvm/nvm.sh && nvm use 22 && tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preinstall": "node -v | grep -q 'v22' || (echo '⚠️  Wrong Node.js version. Please use Node.js v22' && exit 1)"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.7",

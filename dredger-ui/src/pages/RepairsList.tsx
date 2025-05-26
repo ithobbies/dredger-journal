@@ -67,7 +67,12 @@ export default function RepairsList() {
         description:  x.notes ?? x.description ?? "",
         start_date:   x.start_date,
         end_date:     x.end_date,
-        status:       x.status ?? (x.end_date ? "completed" : "in_progress"),
+        status: (() => {
+          const today = new Date().toISOString().slice(0, 10);
+          if (x.start_date > today) return "planned";
+          if (x.end_date && x.end_date < today) return "completed";
+          return "in_progress";
+        })(),
       })));
     }).finally(() => setLoading(false));
   };

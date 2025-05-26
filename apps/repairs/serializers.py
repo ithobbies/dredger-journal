@@ -36,6 +36,12 @@ class RepairItemReadSerializer(serializers.ModelSerializer):
         fields = ("id", "component", "hours", "note")
 
 class RepairSerializer(serializers.ModelSerializer):
+    dredger = DredgerSerializer(read_only=True)
+    dredger_id = serializers.PrimaryKeyRelatedField(
+        queryset=Dredger.objects.all(),
+        source='dredger',
+        write_only=True
+    )
     items = RepairItemWriteSerializer(many=True, write_only=True)
     items_read = RepairItemReadSerializer(source="items", many=True, read_only=True)
 
@@ -44,6 +50,7 @@ class RepairSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "dredger",
+            "dredger_id",
             "start_date",
             "end_date",
             "notes",
@@ -58,8 +65,12 @@ class RepairSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop("items")
+        user = validated_data.get("created_by")
         with transaction.atomic():
-            repair = Repair.objects.create(**validated_data)
+            repair = Repair.objects.create(
+                **validated_data,
+                updated_by=user
+            )
             for item in items_data:
                 comp = item["component"]         # новый устанавливаемый агрегат (ComponentInstance)
                 hours = item.get("hours", 0)     # наработка старого агрегата до замены

@@ -2,7 +2,8 @@
    Итоговая рабочая версия: запись успешно создаётся, стили едины с журналом.
 */
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
 
@@ -14,12 +15,16 @@ interface Dredger {
 
 interface TemplateRow {
   /* id агрегата (ComponentInstance.id) ― то, что ожидaет backend в поле component */
-  id: number;
+  component_id: number | null;
   /* справочные поля */
   part_id: number;
   part_name: string;
+  manufacturer: string;
   norm_hours: number;
   current_hours: number;
+  serial_number: string;
+  /* введённые пользователем часы */
+  hours: number;
 }
 
 /* ─────────── компонент ─────────── */
@@ -89,18 +94,21 @@ export default function RepairForm() {
     // формируем items; backend ждёт component = id агрегата
     const items = template
       .map(t => ({
-        component: t.id,
+        component: t.component_id,
         hours: hours[t.part_id] ?? t.current_hours,
-        note: "",
+        note: ""
       }))
-      // исключаем строки без id (на всякий случай)
-      .filter(it => it.component !== null);
+      .filter(it => it.hours > 0 && it.component !== null);
+
+    // --- debug ---
+    console.log('template:', template);
+    console.log('items:', items);
 
     if (items.length === 0)
       return setError("Выберите хотя бы один агрегат и укажите наработку.");
 
     const payload = {
-      dredger: dredgerId,
+      dredger_id: dredgerId,
       start_date: start,
       end_date: end,
       notes,
@@ -173,6 +181,8 @@ export default function RepairForm() {
             <thead className="bg-gray-50 text-gray-600">
               <tr>
                 <th className="px-3 py-2 text-left">Агрегат</th>
+                <th className="px-3 py-2 text-left">Производитель</th>
+                <th className="px-3 py-2 text-center">Серийный номер</th>
                 <th className="px-3 py-2 text-center">Норма, ч</th>
                 <th className="px-3 py-2 text-center">Наработка, ч</th>
               </tr>
@@ -181,6 +191,8 @@ export default function RepairForm() {
               {template.map(row => (
                 <tr key={row.part_id} className="border-t">
                   <td className="px-3 py-1">{row.part_name}</td>
+                  <td className="px-3 py-1">{row.manufacturer}</td>
+                  <td className="px-3 py-1 text-center">{row.serial_number || "-"}</td>
                   <td className="px-3 py-1 text-center">{row.norm_hours}</td>
                   <td className="px-3 py-1 text-center">
                     <input
