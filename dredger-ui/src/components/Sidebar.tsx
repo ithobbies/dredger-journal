@@ -15,7 +15,7 @@ interface LinkCfg {
   to: string;
   label: string;
   icon: ReactElement;
-  role?: "Инженер" | "Администратор"; // если указано — показываем только этой роли
+  role?: "Инженер" | "Администратор" | ("Инженер" | "Администратор")[]; // если указано — показываем только этой роли
 }
 
 export default function Sidebar() {
@@ -26,6 +26,8 @@ export default function Sidebar() {
   /* безопасно получаем список ролей */
   const roles: string[] = user.groups ?? [];
 
+  console.log('roles:', roles);
+
   /* навигация */
   const links: LinkCfg[] = [
     { to: "/dashboard",   label: "Дашборд",    icon: <LayoutDashboard size={18} /> },
@@ -35,7 +37,7 @@ export default function Sidebar() {
       to: "/spare-parts",
       label: "Запчасти",
       icon: <Box size={18} />,
-      role: "Инженер",
+      role: ["Инженер", "Администратор"],
     },
     {
       to: "/dredgers",
@@ -46,7 +48,8 @@ export default function Sidebar() {
 
   /* фильтр по ролям */
   const allowed = (l: LinkCfg) =>
-    !l.role || roles.includes(l.role) || roles.includes("Администратор");
+    !l.role || 
+    (Array.isArray(l.role) ? l.role.some(r => roles.includes(r)) : roles.includes(l.role));
 
   return (
     <aside

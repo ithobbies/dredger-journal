@@ -8,10 +8,8 @@ class CurrentUserView(APIView):
 
     def get(self, request):
         user = request.user
-        groups = list(user.groups.values_list("name", flat=True))
         return Response({
             "id": user.id,
             "username": user.username,
-            "email": user.email,
-            "roles": groups,          # ["Администратор"] и т.п.
+            "groups": list(user.groups.values_list("name", flat=True)),
         })
