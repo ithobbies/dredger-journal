@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
+import { PlusCircle } from "lucide-react";
 
 interface Part {
   id: number;
@@ -28,8 +29,8 @@ export default function SparePartsList() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">Запчасти</h1>
-        <Link to="/spare-parts/new" className="btn">
-          + Новая запчасть
+        <Link to="/spare-parts/new" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 rounded">
+          <PlusCircle size={18} /> Новая запчасть
         </Link>
       </div>
 

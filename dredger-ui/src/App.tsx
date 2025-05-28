@@ -13,6 +13,7 @@ import SparePartsList     from "./pages/SparePartsList";
 import DredgersList       from "./pages/DredgersList";
 import DredgerCard        from "./pages/DredgerCard";
 import Login              from "./pages/Login";
+import SparePartForm      from "./pages/SparePartForm";
 
 import Sidebar            from "./components/Sidebar";
 import AuthProvider, { useAuth } from "./auth/AuthContext";
@@ -46,6 +47,7 @@ export default function App() {
 
                 {/* Запчасти */}
                 <Route path="/spare-parts" element={<SparePartsList />} />
+                <Route path="/spare-parts/new" element={<SparePartForm />} />
 
                 {/* Землесосы и их карточки */}
                 <Route path="/dredgers"       element={<DredgersList />} />

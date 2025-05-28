@@ -26,6 +26,39 @@ class RepairFilter(FilterSet):
         fields = ["dredger", "start_date", "end_date"]
 
 
+class AvailableComponentsView(APIView):
+    """API для получения доступных компонентов для замены"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        part_ids = request.query_params.get('part_ids', '').split(',')
+        if not part_ids or not part_ids[0]:
+            return Response([])
+
+        # Получаем компоненты, которые:
+        # 1. Соответствуют запрошенным типам запчастей
+        # 2. Не установлены на землесосы (current_dredger is null)
+        # 3. Имеют наработку меньше нормы
+        components = ComponentInstance.objects.filter(
+            part_id__in=part_ids,
+            current_dredger__isnull=True
+        ).select_related('part')
+
+        # Фильтруем по наработке
+        available = []
+        for comp in components:
+            if comp.total_hours < comp.part.norm_hours:
+                available.append({
+                    'id': comp.id,
+                    'part_id': comp.part_id,
+                    'serial_number': comp.serial_number,
+                    'total_hours': comp.total_hours,
+                    'norm_hours': comp.part.norm_hours
+                })
+
+        return Response(available)
+
+
 # — Dredgers —
 class DredgerViewSet(viewsets.ModelViewSet):
     queryset = Dredger.objects.select_related("type")

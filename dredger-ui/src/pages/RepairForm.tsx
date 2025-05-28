@@ -25,6 +25,10 @@ interface TemplateRow {
   serial_number: string;
   /* введённые пользователем часы */
   hours: number;
+  /* флаг необходимости замены */
+  needs_replacement: boolean;
+  /* id нового компонента для замены */
+  new_component_id: number | null;
 }
 
 /* ─────────── компонент ─────────── */
@@ -36,6 +40,7 @@ export default function RepairForm() {
   /* справочники */
   const [dredgers, setDredgers] = useState<Dredger[]>([]);
   const [template, setTemplate] = useState<TemplateRow[]>([]);
+  const [availableComponents, setAvailableComponents] = useState<Record<number, any[]>>({});
 
   /* поля формы */
   const [dredgerId, setDredgerId] = useState<number | "">("");
@@ -43,10 +48,11 @@ export default function RepairForm() {
   const [end, setEnd] = useState<string>("");
   const [notes, setNotes] = useState("");
 
-  /* наработки */
+  /* наработки и замены */
   const [hours, setHours] = useState<Record<number, number>>({});
+  const [replacements, setReplacements] = useState<Record<number, number | null>>({});
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   /* ─── загрузка землесосов ─── */
   useEffect(() => {
@@ -78,11 +84,47 @@ export default function RepairForm() {
       setTemplate([]);
       return;
     }
-    api.get(`/dredgers/${dredgerId}/template/`).then(r => setTemplate(r.data));
+    api.get(`/dredgers/${dredgerId}/template/`).then(r => {
+      const templateData = r.data;
+      setTemplate(templateData);
+      
+      // Загружаем доступные компоненты для каждой запчасти
+      const partIds = templateData.map((t: TemplateRow) => t.part_id);
+      api.get("/available-components/", { params: { part_ids: partIds.join(",") } })
+        .then(response => {
+          const componentsByPart = response.data.reduce((acc: any, comp: any) => {
+            if (!acc[comp.part_id]) acc[comp.part_id] = [];
+            acc[comp.part_id].push(comp);
+            return acc;
+          }, {});
+          setAvailableComponents(componentsByPart);
+        });
+    });
   }, [dredgerId]);
 
   const changeHours = (row: TemplateRow) => (e: any) =>
     setHours(p => ({ ...p, [row.part_id]: Number(e.target.value) }));
+
+  const toggleReplacement = (row: TemplateRow) => () => {
+    setReplacements(p => {
+      const newReplacements = { ...p };
+      if (p[row.part_id]) {
+        // Если уже была выбрана замена - отменяем её
+        delete newReplacements[row.part_id];
+      } else {
+        // Если замены не было - добавляем с пустым значением (null)
+        newReplacements[row.part_id] = null;
+      }
+      return newReplacements;
+    });
+  };
+
+  const selectNewComponent = (row: TemplateRow) => (e: any) => {
+    setReplacements(p => ({
+      ...p,
+      [row.part_id]: Number(e.target.value) || null
+    }));
+  };
 
   /* ─────────── submit ─────────── */
   const handleSubmit = async (e: FormEvent) => {
@@ -93,16 +135,15 @@ export default function RepairForm() {
 
     // формируем items; backend ждёт component = id агрегата
     const items = template
-      .map(t => ({
-        component: t.component_id,
-        hours: hours[t.part_id] ?? t.current_hours,
-        note: ""
-      }))
+      .map(t => {
+        const newComponentId = replacements[t.part_id];
+        return {
+          component: newComponentId || t.component_id,
+          hours: hours[t.part_id] ?? t.current_hours,
+          note: newComponentId ? "Замена компонента" : ""
+        };
+      })
       .filter(it => it.hours > 0 && it.component !== null);
-
-    // --- debug ---
-    console.log('template:', template);
-    console.log('items:', items);
 
     if (items.length === 0)
       return setError("Выберите хотя бы один агрегат и укажите наработку.");
@@ -135,7 +176,7 @@ export default function RepairForm() {
 
   /* ─────────── UI ─────────── */
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-semibold mb-6">
         {isEdit ? "Редактировать ремонт" : "Новый ремонт"}
       </h1>
@@ -176,38 +217,71 @@ export default function RepairForm() {
         </div>
 
         {/* таблица агрегатов */}
-        {template.length > 0 && (
-          <table className="w-full border shadow-sm text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+        <div className="border rounded shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-100">
               <tr>
-                <th className="px-3 py-2 text-left">Агрегат</th>
-                <th className="px-3 py-2 text-left">Производитель</th>
-                <th className="px-3 py-2 text-center">Серийный номер</th>
-                <th className="px-3 py-2 text-center">Норма, ч</th>
-                <th className="px-3 py-2 text-center">Наработка, ч</th>
+                <th className="px-3 py-2 text-left" style={{width: '25%'}}>Агрегат</th>
+                <th className="px-3 py-2 text-left" style={{width: '20%'}}>Производитель</th>
+                <th className="px-3 py-2 text-center" style={{width: '12%'}}>Норма, ч</th>
+                <th className="px-3 py-2 text-center" style={{width: '15%'}}>Текущая наработка</th>
+                <th className="px-3 py-2 text-center" style={{width: '13%'}}>Новая наработка</th>
+                <th className="px-3 py-2 text-center" style={{width: '15%'}}>Замена</th>
               </tr>
             </thead>
             <tbody>
               {template.map(row => (
-                <tr key={row.part_id} className="border-t">
-                  <td className="px-3 py-1">{row.part_name}</td>
-                  <td className="px-3 py-1">{row.manufacturer}</td>
-                  <td className="px-3 py-1 text-center">{row.serial_number || "-"}</td>
-                  <td className="px-3 py-1 text-center">{row.norm_hours}</td>
-                  <td className="px-3 py-1 text-center">
+                <tr key={row.part_id} className="border-t hover:bg-gray-50">
+                  <td className="px-3 py-2">
+                    <div className="truncate">{row.part_name}</div>
+                    {row.serial_number && (
+                      <div className="text-sm text-gray-500">SN: {row.serial_number}</div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 truncate">{row.manufacturer}</td>
+                  <td className="px-3 py-2 text-center">{row.norm_hours}</td>
+                  <td className="px-3 py-2 text-center">{row.current_hours}</td>
+                  <td className="px-3 py-2">
                     <input
                       type="number"
-                      min={0}
+                      min={row.current_hours}
                       value={hours[row.part_id] ?? row.current_hours}
                       onChange={changeHours(row)}
-                      className="w-24 border rounded px-2 py-1 text-right"
+                      className="w-full border rounded px-2 py-1 text-center"
                     />
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={row.part_id in replacements}
+                          onChange={toggleReplacement(row)}
+                          className="rounded"
+                        />
+                        <span>Заменить</span>
+                      </label>
+                      {row.part_id in replacements && (
+                        <select
+                          value={replacements[row.part_id] || ""}
+                          onChange={selectNewComponent(row)}
+                          className="w-full border rounded px-2 py-1"
+                        >
+                          <option value="">Выберите новый</option>
+                          {availableComponents[row.part_id]?.map(comp => (
+                            <option key={comp.id} value={comp.id}>
+                              SN: {comp.serial_number || "—"} ({comp.total_hours} ч)
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
+        </div>
 
         <textarea
           value={notes}
