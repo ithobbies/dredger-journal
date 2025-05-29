@@ -89,94 +89,97 @@ export default function RepairsList() {
 
   /* ─────────── UI ─────────── */
   return (
-    <div className="p-6">
+    <div className="p-6 bg-[#fafbfc] min-h-screen">
       {/* заголовок */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Журнал ремонтов</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Журнал ремонтов</h1>
         <Link
           to="/repairs/new"
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 rounded"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg shadow-sm transition"
         >
-          <PlusCircle size={18} /> Новый ремонт
+          <PlusCircle size={20} /> Новый ремонт
         </Link>
       </div>
 
-      {/* фильтр */}
-      <div className="bg-white border rounded shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-end">
-        {/* каждый селект/инпут растягивается одинаково */}
-        <select
-          value={dredger} onChange={e=>setDredger(e.target.value)}
-          className="flex-1 min-w-[160px] border rounded px-3 py-2"
-        >
-          <option value="all">Все землесосы</option>
-          {dredgers.map(d=> <option key={d.id} value={d.id}>{d.inv_number}</option>)}
-        </select>
-
-        <select
-          value={status} onChange={e=>setStatus(e.target.value)}
-          className="flex-1 min-w-[160px] border rounded px-3 py-2"
-        >
-          <option value="all">Любой статус</option>
-          <option value="in_progress">В работе</option>
-          <option value="completed">Завершено</option>
-          <option value="planned">Запланировано</option>
-        </select>
-
-        <input type="date" value={from} onChange={e=>setFrom(e.target.value)}
-          className="flex-1 min-w-[160px] border rounded px-3 py-2" />
-        <input type="date" value={to} onChange={e=>setTo(e.target.value)}
-          className="flex-1 min-w-[160px] border rounded px-3 py-2" />
-
-        {/* кнопки */}
-        <button onClick={load} disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded"
-        >
-          {loading ? "Загрузка…" : "Применить"}
-        </button>
-
-        <button onClick={reset}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-2 rounded"
-        >
-          Сбросить
-        </button>
-      </div>
-
-      {/* таблица */}
-      <div className="bg-white border rounded shadow-sm overflow-x-auto">
+      {/* ЕДИНЫЙ контейнер */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow overflow-x-auto">
+        <div className="p-6 flex flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Землесос</label>
+            <select
+              value={dredger} onChange={e=>setDredger(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+            >
+              <option value="all">Все</option>
+              {dredgers.map(d=> <option key={d.id} value={d.id}>{d.inv_number}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+            <select
+              value={status} onChange={e=>setStatus(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+            >
+              <option value="all">Все</option>
+              <option value="in_progress">В работе</option>
+              <option value="completed">Завершено</option>
+              <option value="planned">Запланировано</option>
+            </select>
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Период с</label>
+            <input type="date" value={from} onChange={e=>setFrom(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">по</label>
+            <input type="date" value={to} onChange={e=>setTo(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
+          </div>
+          <div className="flex gap-2 ml-auto">
+            <button onClick={load} disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? "Загрузка…" : "Применить"}
+            </button>
+            <button onClick={reset}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-6 py-2 rounded-lg shadow transition"
+            >
+              Сбросить
+            </button>
+          </div>
+        </div>
+        <div className="border-t border-gray-200"></div>
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600">
             <tr>
-              <th className="px-3 py-2 text-left">Землесос</th>
-              <th className="px-3 py-2 text-left">Тип</th>
-              <th className="px-3 py-2 text-left">Компонент</th>
-              <th className="px-3 py-2 text-left">Описание</th>
-              <th className="px-3 py-2 text-left">Начало</th>
-              <th className="px-3 py-2 text-left">Окончание</th>
-              <th className="px-3 py-2 text-left">Статус</th>
+              <th className="px-4 py-3 text-left font-semibold">Землесос</th>
+              <th className="px-4 py-3 text-left font-semibold">Тип</th>
+              <th className="px-4 py-3 text-left font-semibold">Компонент</th>
+              <th className="px-4 py-3 text-left font-semibold">Описание</th>
+              <th className="px-4 py-3 text-left font-semibold">Начало</th>
+              <th className="px-4 py-3 text-left font-semibold">Окончание</th>
+              <th className="px-4 py-3 text-left font-semibold">Статус</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(r=>(
-              <tr key={r.id} className="border-t hover:bg-gray-50">
-                <td className="px-3 py-2">
+              <tr key={r.id} className="border-t border-gray-200 hover:bg-blue-50/40 transition">
+                <td className="px-4 py-3">
                   {r.dredger_id ? (
-                    <Link to={`/dredgers/${r.dredger_id}/components`}
-                      className="text-blue-600 underline">{r.dredger_inv}</Link>
+                    <Link to={`/dredgers/${r.dredger_id}/components`} className="text-blue-600 underline hover:text-blue-800 transition">{r.dredger_inv}</Link>
                   ) : r.dredger_inv}
                 </td>
-                <td className="px-3 py-2">{r.dredger_type}</td>
-                <td className="px-3 py-2">{r.component}</td>
-                <td className="px-3 py-2">{r.description}</td>
-                <td className="px-3 py-2">{df(r.start_date)}</td>
-                <td className="px-3 py-2">{df(r.end_date)}</td>
-                <td className="px-3 py-2"><Badge s={r.status} /></td>
+                <td className="px-4 py-3">{r.dredger_type}</td>
+                <td className="px-4 py-3">{r.component}</td>
+                <td className="px-4 py-3">{r.description}</td>
+                <td className="px-4 py-3">{df(r.start_date)}</td>
+                <td className="px-4 py-3">{df(r.end_date)}</td>
+                <td className="px-4 py-3"><Badge s={r.status} /></td>
               </tr>
             ))}
-
             {!loading && rows.length===0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-gray-500">
-                Нет данных
-              </td></tr>
+              <tr className="border-t border-gray-200"><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-base">Нет данных</td></tr>
             )}
           </tbody>
         </table>
