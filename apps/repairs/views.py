@@ -1,5 +1,5 @@
 from collections import Counter
-from django_filters.rest_framework import FilterSet, DateFilter
+from django_filters.rest_framework import FilterSet, DateFilter, CharFilter
 from rest_framework.views import APIView
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -15,15 +15,28 @@ from .serializers import (
     DredgerSerializer, ComponentInstanceSerializer, ComponentInstanceWriteSerializer,
     RepairSerializer,
 )
+from django.db.models import Q
 
 # Фильтр для ремонта: интерпретируем start_date/end_date как границы интервала
 class RepairFilter(FilterSet):
     start_date = DateFilter(field_name="start_date", lookup_expr="gte")
     end_date = DateFilter(field_name="end_date", lookup_expr="lte")
+    status = CharFilter(method="status_filter")
+
+    def status_filter(self, queryset, name, value):
+        from datetime import date
+        today = date.today()
+        if value == "planned":
+            return queryset.filter(start_date__gt=today)
+        elif value == "completed":
+            return queryset.filter(end_date__lt=today, end_date__isnull=False)
+        elif value == "in_progress":
+            return queryset.filter(start_date__lte=today).filter(Q(end_date__gte=today) | Q(end_date__isnull=True))
+        return queryset
 
     class Meta:
         model = Repair
-        fields = ["dredger", "start_date", "end_date"]
+        fields = ["dredger", "start_date", "end_date", "status"]
 
 
 class AvailableComponentsView(APIView):
