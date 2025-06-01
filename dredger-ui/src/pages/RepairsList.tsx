@@ -52,12 +52,17 @@ export default function RepairsList() {
     setLoading(true);
     const p: any = {};
     if (dredger !== "all") p.dredger = dredger;
-    if (status  !== "all") p.status  = status;
+    if (status  !== "all") p.status = status === "in_progress" ? "in_progress" : 
+                                     status === "completed" ? "completed" : 
+                                     status === "planned" ? "planned" : status;
     if (from) p.start_date = from;
     if (to)   p.end_date   = to;
 
     api.get("/repairs/", { params: p }).then(r => {
       const list = r.data.results ?? r.data;
+      console.log('API Response:', list);
+      console.log('Status filter:', status);
+      console.log('Filter params:', p);
       setRows(list.map((x: any) => ({
         id:           x.id,
         dredger_inv:  x.dredger?.inv_number ?? x.dredger_inv ?? x.dredger,
@@ -67,7 +72,7 @@ export default function RepairsList() {
         description:  x.notes ?? x.description ?? "",
         start_date:   x.start_date,
         end_date:     x.end_date,
-        status: (() => {
+        status:       x.status ?? (() => {
           const today = new Date().toISOString().slice(0, 10);
           if (x.start_date > today) return "planned";
           if (x.end_date && x.end_date < today) return "completed";
