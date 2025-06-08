@@ -8,11 +8,8 @@ export interface User {
 export interface Dredger {
   id: number;
   inv_number: string;
-  type: {
-    id: number;
-    name: string;
-    code: string;
-  };
+  type: number;
+  type_name: string;
 }
 
 export interface SparePart {
