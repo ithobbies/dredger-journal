@@ -97,6 +97,7 @@ class DredgerViewSet(viewsets.ModelViewSet):
             data.append({
                 "part_id": part.id,
                 "part_name": part.name,
+                "code": part.code,
                 "manufacturer": part.manufacturer,
                 "norm_hours": part.norm_hours,
                 "component_id": comp.id if comp else None,
