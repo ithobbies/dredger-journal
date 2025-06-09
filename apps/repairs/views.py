@@ -64,6 +64,7 @@ class AvailableComponentsView(APIView):
                 available.append({
                     'id': comp.id,
                     'part_id': comp.part_id,
+                    'part_name': comp.part.name,
                     'serial_number': comp.serial_number,
                     'total_hours': comp.total_hours,
                     'norm_hours': comp.part.norm_hours
@@ -110,6 +111,70 @@ class DredgerViewSet(viewsets.ModelViewSet):
     def components(self, request, pk=None):
         comps = self.get_object().components.select_related("part")
         return Response(ComponentInstanceSerializer(comps, many=True).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsEngineerOrAdmin])
+    def add_component(self, request, pk=None):
+        """Добавить агрегат к землесосу"""
+        dredger = self.get_object()
+        component_id = request.data.get('component_id')
+        
+        if not component_id:
+            return Response({"error": "component_id is required"}, status=400)
+            
+        try:
+            component = ComponentInstance.objects.get(id=component_id)
+        except ComponentInstance.DoesNotExist:
+            return Response({"error": "Component not found"}, status=404)
+            
+        # Проверяем, не установлен ли уже этот агрегат на другом землесосе
+        if component.current_dredger:
+            return Response(
+                {"error": f"Component is already installed on {component.current_dredger.inv_number}"},
+                status=400
+            )
+            
+        # Проверяем, соответствует ли тип агрегата типу землесоса
+        if not DredgerTypePart.objects.filter(
+            dredger_type=dredger.type,
+            part=component.part
+        ).exists():
+            return Response(
+                {"error": "This component type is not compatible with this dredger type"},
+                status=400
+            )
+            
+        # Устанавливаем агрегат
+        component.current_dredger = dredger
+        component.save()
+        
+        return Response(ComponentInstanceSerializer(component).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsEngineerOrAdmin])
+    def remove_component(self, request, pk=None):
+        """Снять агрегат с землесоса"""
+        dredger = self.get_object()
+        component_id = request.data.get('component_id')
+        
+        if not component_id:
+            return Response({"error": "component_id is required"}, status=400)
+            
+        try:
+            component = ComponentInstance.objects.get(id=component_id)
+        except ComponentInstance.DoesNotExist:
+            return Response({"error": "Component not found"}, status=404)
+            
+        # Проверяем, установлен ли агрегат на этом землесосе
+        if component.current_dredger != dredger:
+            return Response(
+                {"error": "This component is not installed on this dredger"},
+                status=400
+            )
+            
+        # Снимаем агрегат
+        component.current_dredger = None
+        component.save()
+        
+        return Response(ComponentInstanceSerializer(component).data)
 
 
 # — Components —

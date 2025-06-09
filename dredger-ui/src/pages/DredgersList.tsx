@@ -1,25 +1,31 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 import type { Dredger } from "../types";
+import { Eye, Wrench, AlertTriangle } from "lucide-react";
 
 // Карточка землесоса
 function DredgerCard({ dredger }: { dredger: Dredger }) {
-  let image = null;
+  let imageSrc = null;
+  let imageAlt = '';
   if (dredger.type_name === 'LHD-49') {
-    image = <img src="/lhd-49.png" alt="LHD-49" className="w-full h-32 object-contain mb-2" />;
+    imageSrc = '/lhd-49.png';
+    imageAlt = 'LHD-49';
   } else if (dredger.type_name !== 'HHD-76') {
-    image = <img src="/2GRT.png" alt={dredger.type_name} className="w-full h-32 object-contain mb-2" />;
+    imageSrc = '/2GRT.png';
+    imageAlt = dredger.type_name;
   }
   return (
-    <div className="bg-white rounded-xl shadow p-4 flex flex-col gap-2 border hover:shadow-md transition">
-      {image}
-      <div className="text-lg font-semibold">{dredger.inv_number}</div>
-      <div className="text-gray-500 text-sm">{dredger.type_name}</div>
+    <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center border border-gray-200 hover:shadow-xl transition">
+      {imageSrc && (
+        <img src={imageSrc} alt={imageAlt} className="w-full h-44 object-contain mx-auto mb-1" />
+      )}
+      <div className="text-2xl font-bold text-center mt-1 mb-1">Хоз. №{dredger.inv_number}</div>
+      <div className="text-gray-500 text-lg text-center mb-3">Тип: {dredger.type_name}</div>
       <a
         href={`/dredgers/${dredger.id}`}
-        className="mt-2 inline-block bg-blue-50 text-blue-700 px-3 py-1 rounded text-sm font-medium hover:bg-blue-100 transition"
+        className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition text-base shadow mb-2"
       >
-        Подробнее
+        <Eye size={20} /> Дополнительно
       </a>
     </div>
   );

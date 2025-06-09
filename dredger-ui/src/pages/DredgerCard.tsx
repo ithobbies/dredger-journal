@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, NavLink, Routes, Route } from "react-router-dom";
 import api from "../api/axios";
+import { Button } from "../components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Plus, Save, Trash2 } from "lucide-react";
 
 // ─────────── типы ───────────
 interface Dredger {
@@ -99,6 +103,10 @@ function ComponentsTab() {
   const [loading, setLoading] = useState(false);
   const [editHours, setEditHours] = useState<{[key:number]: string}>({});
   const [saving, setSaving] = useState<{[key:number]: boolean}>({});
+  const [availableComponents, setAvailableComponents] = useState<any[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedComponent, setSelectedComponent] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
     setLoading(true);
@@ -121,63 +129,140 @@ function ComponentsTab() {
     setEditHours((prev) => ({ ...prev, [component_id]: "" }));
   };
 
+  const handleAddComponent = async () => {
+    if (!selectedComponent) {
+      setError("Выберите агрегат");
+      return;
+    }
+    try {
+      await api.post(`/dredgers/${id}/add_component/`, { component_id: selectedComponent });
+      const res = await api.get(`/dredgers/${id}/template/`);
+      setRows(res.data);
+      setIsAddDialogOpen(false);
+      setSelectedComponent("");
+      setError("");
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Ошибка при добавлении агрегата");
+    }
+  };
+
+  const handleRemoveComponent = async (componentId: number) => {
+    if (!window.confirm("Вы уверены, что хотите снять этот агрегат?")) return;
+    try {
+      await api.post(`/dredgers/${id}/remove_component/`, { component_id: componentId });
+      const res = await api.get(`/dredgers/${id}/template/`);
+      setRows(res.data);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Ошибка при снятии агрегата");
+    }
+  };
+
+  useEffect(() => {
+    if (isAddDialogOpen && rows.length > 0) {
+      const partIds = rows.map((item) => item.part_id).join(",");
+      if (partIds) {
+        api.get(`/available-components/?part_ids=${partIds}`).then((r) => setAvailableComponents(r.data));
+      }
+    }
+  }, [isAddDialogOpen, rows]);
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-gray-600">
-          <tr>
-            <th className="px-4 py-3 text-left font-semibold">Код</th>
-            <th className="px-4 py-3 text-left font-semibold">Название</th>
-            <th className="px-4 py-3 text-left font-semibold">Сер. №</th>
-            <th className="px-4 py-3 text-left font-semibold">Произв.</th>
-            <th className="px-4 py-3 text-left font-semibold">Норма, ч</th>
-            <th className="px-4 py-3 text-left font-semibold">Наработка, ч</th>
-            <th className="px-4 py-3 text-left font-semibold"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((c: any) => (
-            <tr key={c.part_id} className="border-t border-gray-200 hover:bg-blue-50/40 transition">
-              <td className="px-4 py-3">{c.code}</td>
-              <td className="px-4 py-3">{c.part_name}</td>
-              <td className="px-4 py-3">{c.serial_number || "—"}</td>
-              <td className="px-4 py-3">{c.manufacturer}</td>
-              <td className="px-4 py-3 text-center">{c.norm_hours}</td>
-              <td className="px-4 py-3 text-center">
-                {c.component_id ? (
-                  <div className="flex items-center gap-2 justify-center">
-                    <input
-                      type="number"
-                      min={0}
-                      className="border rounded px-2 py-1 w-20 text-right"
-                      value={editHours[c.component_id] !== undefined ? editHours[c.component_id] : c.current_hours}
-                      onChange={e => handleHoursChange(c.component_id, e.target.value)}
-                      disabled={saving[c.component_id]}
-                    />
-                    <button
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
-                      onClick={() => handleSave(c.component_id)}
-                      disabled={saving[c.component_id] || editHours[c.component_id] === undefined || String(editHours[c.component_id]) === String(c.current_hours)}
-                    >
-                      {saving[c.component_id] ? '...' : 'Сохранить'}
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-gray-400">—</span>
-                )}
-              </td>
-              <td></td>
+    <div className="space-y-4">
+      {/* <div className="flex justify-end">
+        <Button onClick={() => setIsAddDialogOpen(true)}>Добавить агрегат</Button>
+      </div> */}
+
+      <div className="bg-white border border-gray-200 rounded-xl shadow overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-600">
+            <tr>
+              <th className="px-4 py-3 text-left font-semibold">Код</th>
+              <th className="px-4 py-3 text-left font-semibold">Название</th>
+              <th className="px-4 py-3 text-left font-semibold">Сер. №</th>
+              <th className="px-4 py-3 text-left font-semibold">Произв.</th>
+              <th className="px-4 py-3 text-left font-semibold">Норма, ч</th>
+              <th className="px-4 py-3 text-left font-semibold">Наработка, ч</th>
+              <th className="px-4 py-3 text-left font-semibold"></th>
             </tr>
-          ))}
-          {!loading && rows.length === 0 && (
-            <tr className="border-t border-gray-200">
-              <td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-base">
-                Нет данных
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((c: any) => (
+              <tr key={c.part_id} className="border-t border-gray-200 hover:bg-blue-50/40 transition">
+                <td className="px-4 py-3">{c.code}</td>
+                <td className="px-4 py-3">{c.part_name}</td>
+                <td className="px-4 py-3">{c.serial_number || "—"}</td>
+                <td className="px-4 py-3">{c.manufacturer}</td>
+                <td className="px-4 py-3 text-center">{c.norm_hours}</td>
+                <td className="px-4 py-3 text-center">
+                  {!c.component_id ? (
+                    <Button size="icon" variant="ghost" title="Установить агрегат" onClick={() => {
+                      setIsAddDialogOpen(true);
+                      setSelectedComponent("");
+                    }}>
+                      <Plus />
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2 justify-center">
+                      <input
+                        type="number"
+                        min={0}
+                        className="border rounded px-2 py-1 w-20 text-right"
+                        value={editHours[c.component_id] !== undefined ? editHours[c.component_id] : c.current_hours}
+                        onChange={e => handleHoursChange(c.component_id, e.target.value)}
+                      />
+                      <Button size="icon" variant="ghost" title="Сохранить" onClick={() => handleSave(c.component_id)} disabled={saving[c.component_id]}>
+                        <Save />
+                      </Button>
+                      <Button size="icon" variant="destructive" title="Снять" onClick={() => handleRemoveComponent(c.component_id)}>
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {!loading && rows.length === 0 && (
+              <tr className="border-t border-gray-200">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-base">
+                  Нет данных
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Добавить агрегат</DialogTitle>
+            <DialogDescription>
+              Выберите агрегат из списка доступных
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select value={selectedComponent} onValueChange={setSelectedComponent}>
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите агрегат" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableComponents.map((c) => (
+                  <SelectItem key={c.id} value={c.id} className="border-b border-gray-100 last:border-b-0">
+                    {c.part_name} {c.serial_number ? `(Серийный №: ${c.serial_number})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsAddDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleAddComponent}>Добавить</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

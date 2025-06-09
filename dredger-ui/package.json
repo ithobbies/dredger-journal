@@ -15,14 +15,19 @@
     "preinstall": "node -v | grep -q 'v22' || (echo '⚠️  Wrong Node.js version. Please use Node.js v22' && exit 1)"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-select": "^2.2.5",
     "@tailwindcss/postcss": "^4.1.7",
     "axios": "^1.9.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.511.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^6.30.0",
-    "recharts": "^2.15.3"
+    "recharts": "^2.15.3",
+    "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
